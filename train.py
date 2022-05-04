@@ -69,8 +69,6 @@ def train_epoch(model, optimizer, baseline, lr_scheduler, epoch, val_dataset, pr
     step = epoch * (opts.epoch_size // opts.batch_size)
     start_time = time.time()
 
-    # if not opts.no_tensorboard:
-    #     tb_logger.log_value('learnrate_pg0', optimizer.param_groups[0]['lr'], step)
 
     # Generate new training data for each epoch
     training_dataset = baseline.wrap_dataset(problem.make_dataset(
@@ -99,8 +97,7 @@ def train_epoch(model, optimizer, baseline, lr_scheduler, epoch, val_dataset, pr
             tb_logger,
             opts
         )
-        # print(model.init_embed_depot.weight)
-        # print('step: ',step)
+
         step += 1
 
     epoch_duration = time.time() - start_time
@@ -119,10 +116,6 @@ def train_epoch(model, optimizer, baseline, lr_scheduler, epoch, val_dataset, pr
             os.path.join(opts.save_dir, 'epoch-{}.pt'.format(epoch))
         )
 
-    # avg_reward = validate(model, val_dataset, opts) # doesn't have much use --- so dont worry about this
-    #
-    # if not opts.no_tensorboard:
-    #     tb_logger.log_value('val_avg_reward', avg_reward, step)
 
     baseline.epoch_callback(model, epoch)
 
@@ -165,7 +158,6 @@ def train_batch(
     grad_norms = clip_grad_norms(optimizer.param_groups, opts.max_grad_norm)
 
     optimizer.step()
-    # print(optimizer.param_groups[0]['params'][0][0][0].item())
 
     # Logging
     if step % int(opts.log_step) == 0:

@@ -192,13 +192,10 @@ class StateMRTA(NamedTuple):
         robots_range_remaining = self.robots_range_remaining
         robot_taking_decision = self.robot_taking_decision
 
-        # print('Current time: ', current_time[0].item())
-        # print("Agent taking decision: ", self.robot_taking_decision[0].item())
-        # print("Agent range remaining: ", robots_range_remaining[0, robot_taking_decision[0].item()].item())
+
 
         cur_coords = self.coords[self.ids, self.robots_current_destination[self.ids, self.robot_taking_decision]]
-        # print('Current coordiantes: ',  cur_coords)
-        # print('Selected node: ', selected)
+
         time = self.time_matrix[self.ids, self.robots_current_destination[self.ids,self.robot_taking_decision[:]], selected]
         # print('Time for journey: ', time)
         self.robots_next_decision_time[self.ids, self.robot_taking_decision] += time
@@ -313,7 +310,6 @@ class StateMRTA(NamedTuple):
             if intersection.size()[0] > 0:
                 avail_range = self.robots_range_remaining[
                     intersection, robot_taking_decision[intersection].view(-1)]
-                # nodes = torch.arange(1, self.n_nodes+1)
                 d1 = self.distance_matrix[intersection, robot_dest[intersection].view(-1)]
                 d2 = self.distance_matrix[intersection, 0]
                 avail_range_expand = avail_range.T.expand(self.n_nodes + 1, avail_range.size()[0]).T

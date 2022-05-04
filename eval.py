@@ -79,7 +79,6 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     else:
         device = torch.device("cuda:0" if use_cuda else "cpu")
         dataset = model.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=opts.offset, n_agents = opts.n_agents)
-        task_size = 200
         # dataset = get_tasks(dataset, task_size)
         results = _eval_dataset(model, dataset, width, softmax_temp, opts, device)
 
@@ -115,7 +114,7 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     #     out_file), "File already exists! Try running with -f option to overwrite."
     #
 
-    file_name = 'Results/mrta_'+ '_' + str(opts.n_tasks)+'_'+ str(opts.n_agents) + '_Enc_' + str(opts.n_encoder) + '.csv'
+    file_name = 'Results/mrta_'+ '_' + str(opts.n_tasks)+'_'+ str(opts.n_agents) + '.csv'
     with open(file_name, 'w') as f:
         write = csv.writer(f)
         write.writerows((np.array([costs,task]).T).reshape((100, 2)).tolist())
@@ -183,73 +182,59 @@ def _eval_dataset(model, dataset, width, softmax_temp, opts, device):
         duration = time.time() - start
 
         for seq, cost in zip(sequences, costs):
-            if model.problem.NAME == "tsp":
+            if  model.problem.NAME == "mrta":
                 seq = seq.tolist()  # No need to trim as all are same length
-            elif model.problem.NAME == "mrta":
-                seq = seq.tolist()  # No need to trim as all are same length
-            elif model.problem.NAME in ("cvrp"):
-                seq = np.trim_zeros(seq).tolist() + [0]  # Add depot
             else:
                 assert False, "Unkown problem: {}".format(model.problem.NAME)
             # Note VRP only
             results.append((cost, tasks_done_total[i][0],duration,seq))
             i +=1
-    # plot tasks done here
-    # plt.plot(tasks_done_total)
-    # plt.show()
+
     return results
 
 
 if __name__ == "__main__":
-    tasks_avail = [50,100,200,500,1000]
-    encoders = [4]
-    for n_tasks in tasks_avail:
-        agents_avail = [int(n_tasks/25), int(n_tasks/5)]
-        for n_agents in agents_avail:
-            for encoder_id in encoders:
+        n_tasks = 100
+        n_agents = int(n_tasks/5)
+        data_file = "data/mrta/"+str(n_tasks)+"_nodes_mrta.pkl"
 
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--datasets", nargs='+', default=[data_file], help="Filename of the dataset(s) to evaluate")
+        parser.add_argument("-f", action='store_true', help="Set true to overwrite")
+        parser.add_argument("-o", default=None, help="Name of the results file to write")
+        parser.add_argument('--val_size', type=int, default=100,
+                            help='Number of instances used for reporting validation performance')
+        parser.add_argument('--offset', type=int, default=0,
+                            help='Offset where to start in dataset (default 0)')
+        parser.add_argument('--eval_batch_size', type=int, default=100,
+                            help="Batch size to use during (baseline) evaluation")
+        parser.add_argument('--width', type=int, nargs='+',
+                            help='Sizes of beam to use for beam search (or number of samples for sampling), '
+                                 '0 to disable (default), -1 for infinite')
+        parser.add_argument('--decode_strategy', default="greedy", type=str,
+                            help='Beam search (bs), Sampling (sample) or Greedy (greedy)')
+        parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=1,
+                            help="Softmax temperature (sampling or bs)")
+        parser.add_argument('--model', default='outputs/', type=str)
+        parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
+        parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
+        parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')
+        parser.add_argument('--max_calc_batch_size', type=int, default=10000, help='Size for subbatches')
+        parser.add_argument('--results_dir', default='results', help="Name of results directory")
+        parser.add_argument('--multiprocessing', action='store_true',
+                            help='Use multiprocessing to parallelize over multiple GPUs')
+        parser.add_argument('--n_agents', type=int, default=n_agents,
+                            help='n_agents')
+        parser.add_argument('--n_tasks', type=int, default=n_tasks,
+                            help='n_tasks')
 
-                parser = argparse.ArgumentParser()
-                parser.add_argument("--datasets", nargs='+', default=["data/mrta/"+str(n_tasks)+"_nodes_mrta.pkl"], help="Filename of the dataset(s) to evaluate")
-                parser.add_argument("-f", action='store_true', help="Set true to overwrite")
-                parser.add_argument("-o", default=None, help="Name of the results file to write")
-                parser.add_argument('--val_size', type=int, default=100,
-                                    help='Number of instances used for reporting validation performance')
-                parser.add_argument('--offset', type=int, default=0,
-                                    help='Offset where to start in dataset (default 0)')
-                parser.add_argument('--eval_batch_size', type=int, default=100,
-                                    help="Batch size to use during (baseline) evaluation")
-                # parser.add_argument('--decode_type', type=str, default='greedy',
-                #                     help='Decode type, greedy or sampling')
-                parser.add_argument('--width', type=int, nargs='+',
-                                    help='Sizes of beam to use for beam search (or number of samples for sampling), '
-                                         '0 to disable (default), -1 for infinite')
-                parser.add_argument('--decode_strategy', default="greedy", type=str,
-                                    help='Beam search (bs), Sampling (sample) or Greedy (greedy)')
-                parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=1,
-                                    help="Softmax temperature (sampling or bs)")
-                parser.add_argument('--model', default='outputs/h_128/Enc_'+str(encoder_id)+'/', type=str)
-                parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
-                parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-                parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')
-                parser.add_argument('--max_calc_batch_size', type=int, default=10000, help='Size for subbatches')
-                parser.add_argument('--results_dir', default='results', help="Name of results directory")
-                parser.add_argument('--multiprocessing', action='store_true',
-                                    help='Use multiprocessing to parallelize over multiple GPUs')
-                parser.add_argument('--n_encoder', type=int, default=encoder_id,
-                                    help='Encoder_id')
-                parser.add_argument('--n_agents', type=int, default=n_agents,
-                                    help='n_agents')
-                parser.add_argument('--n_tasks', type=int, default=n_tasks,
-                                    help='n_tasks')
+        opts = parser.parse_args()
 
-                opts = parser.parse_args()
+        assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \
+            "Cannot specify result filename with more than one dataset or more than one width"
 
-                assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \
-                    "Cannot specify result filename with more than one dataset or more than one width"
+        widths = opts.width if opts.width is not None else [0]
 
-                widths = opts.width if opts.width is not None else [0]
-
-                for width in widths:
-                    for dataset_path in opts.datasets:
-                        eval_dataset(dataset_path, width, opts.softmax_temperature, opts)
+        for width in widths:
+            for dataset_path in opts.datasets:
+                eval_dataset(dataset_path, width, opts.softmax_temperature, opts)

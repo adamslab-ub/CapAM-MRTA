@@ -62,7 +62,6 @@ class AttentionModel(nn.Module):
         self.n_encode_layers = n_encode_layers
         self.decode_type = None
         self.temp = 1.0
-        self.is_vrp = problem.NAME == 'cvrp'
         self.is_mrta = problem.NAME == 'mrta'
 
         self.tanh_clipping = tanh_clipping
@@ -78,22 +77,11 @@ class AttentionModel(nn.Module):
         self.robots_state_query_embed = nn.Linear(3, embedding_dim)
         self.robot_taking_decision_query = nn.Linear(3, embedding_dim)
 
-        # Problem specific context parameters (placeholder and step context dimension)
-            # Embedding of last node + remaining_capacity / remaining length / remaining prize to collect
-
-
-        step_context_dim = embedding_dim + 1
-
 
 
         node_dim = 3  # x, y, demand
 
         if self.is_mrta:
-            # n_robot = 20
-            # step_context_dim = embedding_dim + 1 + 1 + 1 + n_robot*(embedding_dim + 1 + 1)#embedding_dim + 2
-
-
-
             step_context_dim_new = embedding_dim + embedding_dim + 1
 
         # Special embedding projection for depot node
@@ -130,11 +118,8 @@ class AttentionModel(nn.Module):
         :return:
         """
 
-        if self.checkpoint_encoder and self.training:  # Only checkpoint if we need gradients
-            embeddings, _ = checkpoint(self.embedder, self._init_embed(input))
-        else:
 
-            embeddings, _ = self.embedder(input)
+        embeddings, _ = self.embedder(input)
             # end_time = time.time() - start_time
 
         _log_p, pi, cost = self._inner(input, embeddings)
@@ -204,10 +189,6 @@ class AttentionModel(nn.Module):
     def _init_embed(self, input):
 
         features = ('deadline',)
-        # print(self.init_embed(torch.cat((
-        #             input['loc'],
-        #             *(input[feat][:, :, None] for feat in features)
-        #         ), -1)))
 
         return torch.cat(
             (
@@ -219,10 +200,10 @@ class AttentionModel(nn.Module):
             ),
             1
         )
-        # TSP
+
 
     def _inner_eval(self, input, embeddings):
-
+        # same as inner() but used for evaluaiton
         outputs = []
         sequences = []
 
@@ -234,10 +215,7 @@ class AttentionModel(nn.Module):
 
         # Perform decoding steps
         i = 0
-        # print(state.visited_)
-        # print(state.all_finished().item())
-        # print(state.visited_.all().item())
-        time_sl = []
+
         total_time = 0.0
         while not (self.shrink_size is None and not (state.all_finished().item() == 0)):
             start_time = time.time()
@@ -260,10 +238,9 @@ class AttentionModel(nn.Module):
 
             # Select the indices of the next nodes in the sequences, result (batch_size) long
             selected = self._select_node(log_p.exp()[:, 0, :], mask[:, 0, :])  # Squeeze out steps dimension
-            # print(selected[0].item(), state.robot_taking_decision[0])
             time_1 = time.time() - start_time
             state = state.update(selected)
-            start_time_2 = time.time()
+            start_time_2 = time.time() # we only consider time for computing a decision
             # Now make log_p, selected desired output size by 'unshrinking'
             if self.shrink_size is not None and state.ids.size(0) < batch_size:
                 log_p_, selected_ = log_p, selected
@@ -280,15 +257,8 @@ class AttentionModel(nn.Module):
 
             i += 1
             time_2 = time.time() - start_time_2
-            # time_sl.append(end_time1+end_time2)
             total_time += time_1 + time_2
-        # print(state.tasks_done_success, cost)
-        # Collected lists, return Tensor
-        # r = 1 - torch.div(state.tasks_done_success, float(state.n_nodes))
-        # d = torch.div(state.lengths, float(state.n_nodes) * 1.414)
-        # u = (r == 0).double()
-        # cost = r - torch.mul(u, torch.exp(-d))
-        time_per_decision = total_time/i
+
         r = torch.div(((torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1), float(state.n_nodes))
         d = torch.div(state.lengths, float(state.n_nodes) * 1.414).view(-1)
         u = (r == 0).double()
@@ -311,9 +281,6 @@ class AttentionModel(nn.Module):
 
         # Perform decoding steps
         i = 0
-        # print(state.visited_)
-        # print(state.all_finished().item())
-        # print(state.visited_.all().item())
 
         #initial tasks
         while not (self.shrink_size is None and not (state.all_finished().item() == 0)):
@@ -353,10 +320,8 @@ class AttentionModel(nn.Module):
             # Collect output of step
             outputs.append(log_p[:, 0, :])
             sequences.append(selected)
-            # print(state.all_finished().item() == 0)
 
             i += 1
-        # print(state.tasks_done_success, cost)
         # Collected lists, return Tensor
         r = torch.div(((torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1), float(state.n_nodes))
 
@@ -375,7 +340,7 @@ class AttentionModel(nn.Module):
         return sample_many(
             lambda input: self._inner_eval(*input),  # Need to unpack tuple into arguments
             lambda input, pi: self.problem.get_costs(input[0], pi),  # Don't need embeddings as input to get_costs
-            (input, self.embedder(input)[0]) if self.n_encoder <14 else  (input, self.embedder(self._init_embed(input))[0]),  # Pack input with embeddings (additional input) - for CCN encoding
+            (input, self.embedder(input)[0]),  # Pack input with embeddings (additional input) - for CCN encoding
             # (input, self.embedder(self._init_embed(input))[0]), ## for MHA encoding
             batch_rep, iter_rep
         )
@@ -481,9 +446,6 @@ class AttentionModel(nn.Module):
         robots_states_embedding = self.robots_state_query_embed(current_robot_states).sum(-2)
         decision_robot_state_embedding = self.robot_taking_decision_query(decision_robot_state)
         return torch.cat((state.next_decision_time[:, :, None], decision_robot_state_embedding[:,None], robots_states_embedding[:,None]),-1)
-
-
-
 
 
     def _one_to_many_logits(self, query, glimpse_K, glimpse_V, logit_K, mask):

@@ -1,8 +1,7 @@
 Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks
 (CapAM)
 
-This repository contains the code for the implementation of Capsule based attention networks, for solving Multi-Robot Task Allocation.
-It also has the baseline AM-RL implementation as well.
+This repository contains the code for the implementation of Capsule based attention networks aka CapAM, for solving Multi-Robot Task Allocation.
 
 ![](gif_latest.gif)
 
@@ -15,6 +14,9 @@ How to use the code:
     Evaluation:
         The datasets for testing can be found inside the directory named 'data'. Run the eval.py file with the path to the dataset, specify the number of tasks,
         and the number of agents
+
+    Test data generation:
+        More test data with varying number of taks can be generated using the script generate_mrta_data.py
 
 Dependencies:
     The code is written in Python. We recommend using Python 3.7. The required packages can be found in the file environment.yml.

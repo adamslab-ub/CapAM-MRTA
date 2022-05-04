@@ -197,9 +197,7 @@ class StateMRTA(NamedTuple):
         cur_coords = self.coords[self.ids, self.robots_current_destination[self.ids, self.robot_taking_decision]]
 
         time = self.time_matrix[self.ids, self.robots_current_destination[self.ids,self.robot_taking_decision[:]], selected]
-        # print('Time for journey: ', time)
         self.robots_next_decision_time[self.ids, self.robot_taking_decision] += time
-        # print('Robots next decision time: ', self.robots_next_decision_time)
         self.robots_distance_travelled[self.ids, self.robot_taking_decision] += self.distance_matrix[
             self.ids, self.robots_current_destination[self.ids, robot_taking_decision], selected]
 
@@ -207,7 +205,6 @@ class StateMRTA(NamedTuple):
         if zero_indices.size()[0] > 0:
             self.robots_capacity[zero_indices[:,0], self.robot_taking_decision[zero_indices[:,0]].view(-1)]= self.max_capacity
             robots_range_remaining[zero_indices[:, 0], robot_taking_decision[zero_indices[:, 0]].view(-1)] = self.max_range
-            # robots_range_remaining[zero_indices[:, 0], robot_taking_decision[zero_indices[:, 0]].view(-1)]
 
         non_zero_indices = torch.nonzero(selected)
         if non_zero_indices.size()[0] > 0:
@@ -222,7 +219,6 @@ class StateMRTA(NamedTuple):
             distance_new = self.distance_matrix[non_zero_indices[:, 0], self.robots_current_destination[non_zero_indices[:, 0], robot_taking_decision[non_zero_indices[:, 0]].view(-1)].view(-1), selected[non_zero_indices[:, 0]].view(-1)]
             robots_range_remaining[non_zero_indices[:, 0], robot_taking_decision[non_zero_indices[:, 0]].view(-1)] -= distance_new
             if intersection.size()[0] > 0:
-                # self.robots_capacity[intersection, self.robot_taking_decision[intersection].view(-1)] -= 1*int(self.enable_capacity_constraint) # this has to be uncommented for capacity constraints
                 self.tasks_done_success[intersection] +=1
             self.tasks_visited[non_zero_indices[:,0]] += 1
 
@@ -231,13 +227,11 @@ class StateMRTA(NamedTuple):
         self.robots_current_destination[self.ids, self.robot_taking_decision] = selected
 
         sorted_time, indices = torch.sort(self.robots_next_decision_time)
-        # robot_taking_decision_range = self.robot_taking_decision_range
 
         robot_taking_decision_range = robots_range_remaining[self.ids, indices[self.ids, 0]]
 
         if self.visited_.dtype == torch.uint8:
-            # Note: here we do not subtract one as we have to scatter so the first column allows scattering depot
-            # Add one dimension since we write a single value
+
             visited_ = self.visited_.scatter(-1, prev_a[:, :, None], 1)
         else:
             # This works, will not set anything if prev_a -1 == -1 (depot)
@@ -251,7 +245,6 @@ class StateMRTA(NamedTuple):
 
         # print('visited: ', visited_[0])
         # print('***************** End of decision making process*******')
-        # if end
         return self._replace(
             prev_a=prev_a, previous_decision_time = previous_time, current_time = current_time,
             robots_range_remaining = robots_range_remaining, robot_taking_decision = indices[self.ids,0],

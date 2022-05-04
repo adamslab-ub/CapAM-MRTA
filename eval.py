@@ -6,13 +6,10 @@ import numpy as np
 import itertools
 from tqdm import tqdm
 from utils import load_model, move_to
-from utils.data_utils import save_dataset
 from torch.utils.data import DataLoader
 import time
 import csv
-from datetime import timedelta
 from utils.functions import parse_softmax_temperature
-import matplotlib.pyplot as plt
 mp = torch.multiprocessing.get_context('spawn')
 
 
@@ -83,15 +80,9 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
         results = _eval_dataset(model, dataset, width, softmax_temp, opts, device)
 
     # This is parallelism, even if we use multiprocessing (we report as if we did not use multiprocessing, e.g. 1 GPU)
-    parallelism = opts.eval_batch_size
 
     costs, task, durations, tours = zip(*results)  # Not really costs since they should be negative
 
-    # print("Average cost: {} +- {}".format(np.mean(costs), 2 * np.std(costs) / np.sqrt(len(costs))))
-    # print("Average serial duration: {} +- {}".format(
-    #     np.mean(durations), 2 * np.std(durations) / np.sqrt(len(durations))))
-    # print("Average parallel duration: {}".format(np.mean(durations) / parallelism))
-    # print("Calculated total duration: {}".format(timedelta(seconds=int(np.sum(durations) / parallelism))))
 
     dataset_basename, ext = os.path.splitext(os.path.split(dataset_path)[-1])
     model_name = "_".join(os.path.normpath(os.path.splitext(opts.model)[0]).split(os.sep)[-2:])
@@ -108,16 +99,10 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
     else:
         out_file = opts.o
 
-        # out_file = 'results/mrta/mrta200_mrta_seed1234/mrta_50_Nodes_20_Agents_CAM_Results.pkl'
 
-    # assert opts.f or not os.path.isfile(
-    #     out_file), "File already exists! Try running with -f option to overwrite."
-    #
+    assert opts.f or not os.path.isfile(
+        out_file), "File already exists! Try running with -f option to overwrite."
 
-    file_name = 'Results/mrta_'+ '_' + str(opts.n_tasks)+'_'+ str(opts.n_agents) + '.csv'
-    with open(file_name, 'w') as f:
-        write = csv.writer(f)
-        write.writerows((np.array([costs,task]).T).reshape((100, 2)).tolist())
 
     return costs, tours, durations
 
@@ -125,8 +110,6 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 def _eval_dataset(model, dataset, width, softmax_temp, opts, device):
 
     model.to(device)
-    # model.eval()
-
     model.set_decode_type(
         "greedy" if opts.decode_strategy in ('bs', 'greedy') else "sampling",
         temp=softmax_temp)

@@ -26,12 +26,16 @@ Citation:
     Paul, S., Ghassemi, P.,  and Chowdhury, S., Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks , IEEE International Conference on Robotics and Automation (ICRA 2022), May 23-27, 2022, Philadelphia, PA. (accepted)
     
     Bibtex: 
-            @INPROCEEDINGS{Paul_ICRA_2022,
+            @conference{capam_icra_2022,
               title = {Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks},
               booktitle = {Thirty Ninth IEEE International Conference on Robotics and Automation (ICRA 2022)},
-            author={Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
+                author={Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
+                year = {2022},
+                month = {05},
               publisher = {IEEE},
-              year = {2022}
-            }
+              address =   {Philadelphia, PA, USA},
+              year = {2022},
+              note = {(in press)}
+}
                 
                 

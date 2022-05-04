@@ -14,7 +14,7 @@ How to use the code:
         The datasets for testing can be found inside the directory named 'data'
 
 Dependencies:
-    The code is written in Python. We recommend using Python 3.7. The required packages can be found in the file requirements.txt.
+    The code is written in Python. We recommend using Python 3.7. The required packages can be found in the file environment.yml.
 
 Citation:
 

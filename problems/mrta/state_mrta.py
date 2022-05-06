@@ -65,8 +65,6 @@ class StateMRTA(NamedTuple):
     max_range :torch.Tensor
     max_capacity : torch.Tensor
     max_speed : torch.Tensor
-    enable_capacity_constraint: torch.Tensor
-    enable_range_constraint: torch.Tensor
     n_nodes: torch.Tensor
     initial_size: torch.Tensor
     n_depot: torch.Tensor
@@ -115,8 +113,6 @@ class StateMRTA(NamedTuple):
         max_range = input['max_range'][0].item()
         max_capacity = input['max_capacity'][0].item()
         max_speed = input['max_speed'][0].item()
-        enable_capacity_constraint = input['enable_capacity_constraint'][0].item()
-        enable_range_constraint=input['enable_range_constraint'][0].item()
         initial_size = input['initial_size'][0].item()
         batch_size, n_loc, _ = loc.size()
         n_depot = input['depot'].size()[1]
@@ -169,8 +165,6 @@ class StateMRTA(NamedTuple):
             max_capacity = max_capacity,
             n_agents = n_agents,
             max_range = max_range,
-            enable_capacity_constraint = enable_capacity_constraint,
-            enable_range_constraint = enable_range_constraint,
             n_nodes = input['loc'].size()[1],
             initial_size = initial_size,
             n_depot=n_depot,

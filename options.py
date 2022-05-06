@@ -17,8 +17,6 @@ def get_options(args=None):
     parser.add_argument('--max_n_agents', type=int, default=20, help="Number of robots")
     parser.add_argument('--min_n_agents', type=int, default=5, help="Number of robots")
     parser.add_argument('--n_depot', type=int, default=1, help="Number of depot")
-    parser.add_argument('--enable_capacity_constraint', type=bool, default=False, help="Set it to true to enable capacity constraint")
-    parser.add_argument('--enable_range_constraint', type=bool, default=True, help="Set it true to enable range constraint")
     parser.add_argument('--deadline_min', type=int, default=.1,
                         help="Min value for deadline")
     parser.add_argument('--deadline_max', type=int, default=1,

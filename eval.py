@@ -198,7 +198,7 @@ if __name__ == "__main__":
                             help='Beam search (bs), Sampling (sample) or Greedy (greedy)')
         parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=1,
                             help="Softmax temperature (sampling or bs)")
-        parser.add_argument('--model', default='outputs/mrta_100/run_20220504T151057', type=str) # set the path to the trained model which needs to be evaluated
+        parser.add_argument('--model', default='outputs/mrta_100/run_20220506T114502', type=str) # set the path to the trained model which needs to be evaluated
         parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
         parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
         parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')

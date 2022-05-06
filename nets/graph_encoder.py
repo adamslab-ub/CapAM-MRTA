@@ -215,16 +215,14 @@ class GraphAttentionEncoder(nn.Module):
         )
 
 
-
-
 class GCAPCN(nn.Module):
 
     def __init__(self,
                  n_layers=2,
                  n_dim=128,
-                 n_p=4,
+                 n_p=3,
                  node_dim=3,
-                 n_K=3
+                 n_K=2
                  ):
         super(GCAPCN, self).__init__()
         self.n_layers = n_layers
@@ -238,21 +236,9 @@ class GCAPCN(nn.Module):
         self.W_L_1_G1 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
         self.W_L_1_G2 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
         self.W_L_1_G3 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_1_G4 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
 
-        self.W_L_2_G1 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_2_G2 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_2_G3 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_2_G4 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-
-        self.W_L_3_G1 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_3_G2 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_3_G3 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
-        self.W_L_3_G4 = nn.Linear(n_dim * (n_K + 1) * n_p, n_dim)
 
         self.normalization_1 = Normalization(n_dim * n_p)
-        self.normalization_2 = Normalization(n_dim * n_p)
-        self.normalization_3 = Normalization(n_dim * n_p)
 
         self.W_F = nn.Linear(n_dim * n_p, n_dim)
 
@@ -260,7 +246,7 @@ class GCAPCN(nn.Module):
 
     def forward(self, data, mask=None):
         X = torch.cat((data['loc'], data['deadline'][:, :, None]), 2)
-        # X = torch.cat((X[:, :, 0:2], (X[:, :, 2] / X[:, :, 2].max())[:, :, None]), -1)
+        X = torch.cat((X[:, :, 0:2], (X[:, :, 2] / X[:, :, 2].max())[:, :, None]), -1)
         # X = torch.cat((data['loc'], data['deadline']), -1)
         X_loc = X
         distance_matrix = (((X_loc[:, :, None] - X_loc[:, None]) ** 2).sum(-1)) ** .5
@@ -269,13 +255,8 @@ class GCAPCN(nn.Module):
             (num_samples, num_locations, num_locations)) - 1).to(torch.bool).to(torch.float))
         A[A != A] = 0
         A = A / A.max()
-        D = torch.mul(
-            torch.eye(num_locations, device=distance_matrix.device).expand((num_samples, num_locations, num_locations)),
-            (A.sum(-1) - 1)[:, None].expand((num_samples, num_locations, num_locations)))
-
-        L = D - A
-        L_squared = torch.matmul(L, L)
-        L_cube = torch.matmul(L, L_squared)
+        D = torch.mul(torch.eye(num_locations, device=distance_matrix.device).expand((num_samples, num_locations, num_locations)),
+                      (A.sum(-1) - 1)[:, None].expand((num_samples, num_locations, num_locations)))
 
         # Layer 1
 
@@ -283,114 +264,36 @@ class GCAPCN(nn.Module):
         F0 = self.init_embed(X)
         F0_squared = torch.mul(F0[:, :, :], F0[:, :, :])
         F0_cube = torch.mul(F0[:, :, :], F0_squared[:, :, :])
-        F0_quad = torch.mul(F0[:, :, :], F0_cube[:, :, :])
 
         # K = 3
+        L = D - A
+        L_squared = torch.matmul(L, L)
 
 
         g_L1_1 = self.W_L_1_G1(torch.cat((F0[:, :, :],
                                           torch.matmul(L, F0)[:, :, :],
-                                          torch.matmul(L_squared, F0)[:, :, :],
-                                          torch.matmul(L_cube, F0)[:, :, :]
+                                          torch.matmul(L_squared, F0)[:, :, :]
                                           ),
                                          -1))
         g_L1_2 = self.W_L_1_G2(torch.cat((F0_squared[:, :, :],
                                           torch.matmul(L, F0_squared)[:, :, :],
-                                          torch.matmul(L_squared, F0_squared)[:, :, :],
-                                          torch.matmul(L_cube, F0_squared)[:, :, :]
+                                          torch.matmul(L_squared, F0_squared)[:, :, :]
                                           ),
                                          -1))
 
         g_L1_3 = self.W_L_1_G3(torch.cat((F0_cube[:, :, :],
                                           torch.matmul(L, F0_cube)[:, :, :],
-                                          torch.matmul(L_squared, F0_cube)[:, :, :],
-                                          torch.matmul(L_cube, F0_cube)[:, :, :]
+                                          torch.matmul(L_squared, F0_cube)[:, :, :]
                                           ),
                                          -1))
 
-        g_L1_4 = self.W_L_1_G4(torch.cat((F0_quad[:, :, :],
-                                          torch.matmul(L, F0_quad)[:, :, :],
-                                          torch.matmul(L_squared, F0_quad)[:, :, :],
-                                          torch.matmul(L_cube, F0_quad)[:, :, :]
-                                          ),
-                                         -1))
 
-        F1 = torch.cat((g_L1_1, g_L1_2, g_L1_3, g_L1_4), -1)
+        F1 = torch.cat((g_L1_1, g_L1_2, g_L1_3), -1)
         F1 = self.activ(F1) + F0
         F1 = self.normalization_1(F1)
 
 
-        # Layer 2
-
-        F1_squared = torch.mul(F1[:, :, :], F1[:, :, :])
-        F1_cube = torch.mul(F1[:, :, :], F1_squared[:, :, :])
-        F1_quad = torch.mul(F1[:, :, :], F1_cube[:, :, :])
-        g_L2_1 = self.W_L_2_G1(torch.cat((F1[:, :, :],
-                                          torch.matmul(L, F1)[:, :, :],
-                                          torch.matmul(L_squared, F1)[:, :, :],
-                                          torch.matmul(L_cube, F1)[:, :, :]
-                                          ),
-                                         -1))
-        g_L2_2 = self.W_L_2_G2(torch.cat((F1_squared[:, :, :],
-                                          torch.matmul(L, F1_squared)[:, :, :],
-                                          torch.matmul(L_squared, F1_squared)[:, :, :],
-                                          torch.matmul(L_cube, F1_squared)[:, :, :]
-                                          ),
-                                         -1))
-
-        g_L2_3 = self.W_L_2_G3(torch.cat((F1_cube[:, :, :],
-                                          torch.matmul(L, F1_cube)[:, :, :],
-                                          torch.matmul(L_squared, F1_cube)[:, :, :],
-                                          torch.matmul(L_cube, F1_cube)[:, :, :]
-                                          ),
-                                         -1))
-
-        g_L2_4 = self.W_L_2_G4(torch.cat((F1_quad[:, :, :],
-                                          torch.matmul(L, F1_quad)[:, :, :],
-                                          torch.matmul(L_squared, F1_quad)[:, :, :],
-                                          torch.matmul(L_cube, F1_quad)[:, :, :]
-                                          ),
-                                         -1))
-
-
-        F2 = self.activ(torch.cat((g_L2_1, g_L2_2, g_L2_3, g_L2_4), -1)) + F1
-        F2 = self.normalization_2(F2)
-
-        # Layer 3
-
-        F2_squared = torch.mul(F2[:, :, :], F2[:, :, :])
-        F2_cube = torch.mul(F2[:, :, :], F2_squared[:, :, :])
-        F2_quad = torch.mul(F2[:, :, :], F2_cube[:, :, :])
-        g_L3_1 = self.W_L_3_G1(torch.cat((F2[:, :, :],
-                                          torch.matmul(L, F2)[:, :, :],
-                                          torch.matmul(L_squared, F2)[:, :, :],
-                                          torch.matmul(L_cube, F2)[:, :, :]
-                                          ),
-                                         -1))
-        g_L3_2 = self.W_L_3_G2(torch.cat((F2_squared[:, :, :],
-                                          torch.matmul(L, F2_squared)[:, :, :],
-                                          torch.matmul(L_squared, F2_squared)[:, :, :],
-                                          torch.matmul(L_cube, F2_squared)[:, :, :]
-                                          ),
-                                         -1))
-
-        g_L3_3 = self.W_L_3_G3(torch.cat((F2_cube[:, :, :],
-                                          torch.matmul(L, F2_cube)[:, :, :],
-                                          torch.matmul(L_squared, F2_cube)[:, :, :],
-                                          torch.matmul(L_cube, F2_cube)[:, :, :]
-                                          ),
-                                         -1))
-        g_L3_4 = self.W_L_3_G4(torch.cat((F2_quad[:, :, :],
-                                          torch.matmul(L, F2_quad)[:, :, :],
-                                          torch.matmul(L_squared, F2_quad)[:, :, :],
-                                          torch.matmul(L_cube, F2_quad)[:, :, :]
-                                          ),
-                                         -1))
-
-        F3 = self.activ(torch.cat((g_L3_1, g_L3_2, g_L3_3, g_L3_4), -1)) + F2
-        F3 = self.normalization_3(F3)
-
-        F_final = self.activ(self.W_F(F3))
+        F_final = self.activ(self.W_F(F1))
 
         init_depot_embed = self.init_embed_depot(data['depot'])
         h = torch.cat((init_depot_embed, F_final), 1)

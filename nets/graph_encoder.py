@@ -245,7 +245,7 @@ class GCAPCN(nn.Module):
         self.activ = nn.LeakyReLU()
 
     def forward(self, data, mask=None):
-        X = torch.cat((data['loc'], data['deadline'][:, :, None]), 2)
+        X = torch.cat((data['loc'], data['deadline'][:, :, None], data['workload'][:, :, None]), -1)
         X = torch.cat((X[:, :, 0:2], (X[:, :, 2] / X[:, :, 2].max())[:, :, None]), -1)
         # X = torch.cat((data['loc'], data['deadline']), -1)
         X_loc = X

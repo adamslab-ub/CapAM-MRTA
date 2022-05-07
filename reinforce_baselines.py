@@ -167,8 +167,7 @@ class RolloutBaseline(Baseline):
                 size=self.opts.graph_size, num_samples=self.opts.val_size,
                 n_depot=self.opts.n_depot,
                 initial_size = self.opts.initial_size,
-                max_n_agents = self.opts.max_n_agents,
-                min_n_agents= self.opts.min_n_agents,
+                n_agents=self.opts.n_agents,
                 deadline_min = self.opts.deadline_min,
                 deadline_max=self.opts.deadline_max,
                 distribution=self.opts.data_distribution)
@@ -209,6 +208,9 @@ class RolloutBaseline(Baseline):
 
         print("Epoch {} candidate mean {}, baseline epoch {} mean {}, difference {}".format(
             epoch, candidate_mean, self.epoch, self.mean, candidate_mean - self.mean))
+        users_file = open("convergence.txt", "a")
+        users_file.write(str(self.mean)+',' +'\n')
+        users_file.close()
         if candidate_mean - self.mean < 0:
             # Calc p value
             t, p = ttest_rel(candidate_vals, self.bl_vals)

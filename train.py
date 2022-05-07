@@ -73,8 +73,6 @@ def train_epoch(model, optimizer, baseline, lr_scheduler, epoch, val_dataset, pr
     # Generate new training data for each epoch
     training_dataset = baseline.wrap_dataset(problem.make_dataset(
         size=opts.graph_size, num_samples=opts.epoch_size,initial_size = opts.initial_size,
-                max_n_agents=opts.max_n_agents,
-                min_n_agents=opts.min_n_agents,
                 n_depot=opts.n_depot,
                 deadline_min = opts.deadline_min,
                 deadline_max=opts.deadline_max, distribution=opts.data_distribution))

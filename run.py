@@ -115,8 +115,6 @@ def run(opts):
     val_dataset = problem.make_dataset(
         size=opts.graph_size, num_samples=opts.val_size, filename=opts.val_dataset,
         initial_size=opts.initial_size,
-        max_n_agents=opts.max_n_agents,
-        min_n_agents=opts.min_n_agents,
         n_depot=opts.n_depot,
         deadline_min=opts.deadline_min,
         deadline_max=opts.deadline_max,

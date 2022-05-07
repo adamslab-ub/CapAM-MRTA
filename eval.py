@@ -6,10 +6,15 @@ import numpy as np
 import itertools
 from tqdm import tqdm
 from utils import load_model, move_to
+from utils.data_utils import save_dataset
+import csv
+
 from torch.utils.data import DataLoader
 import time
-import csv
+from datetime import timedelta
+import pickle
 from utils.functions import parse_softmax_temperature
+import matplotlib.pyplot as plt
 mp = torch.multiprocessing.get_context('spawn')
 
 
@@ -75,11 +80,12 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
 
     else:
         device = torch.device("cuda:0" if use_cuda else "cpu")
-        dataset = model.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=opts.offset, n_agents = opts.n_agents)
+        dataset = model.problem.make_dataset(filename=dataset_path, num_samples=opts.val_size, offset=opts.offset)
         # dataset = get_tasks(dataset, task_size)
         results = _eval_dataset(model, dataset, width, softmax_temp, opts, device)
 
     # This is parallelism, even if we use multiprocessing (we report as if we did not use multiprocessing, e.g. 1 GPU)
+    parallelism = opts.eval_batch_size
 
     costs, task, durations, tours = zip(*results)  # Not really costs since they should be negative
 
@@ -96,20 +102,15 @@ def eval_dataset(dataset_path, width, softmax_temp, opts):
             width if opts.decode_strategy != 'greedy' else '',
             softmax_temp, opts.offset, opts.offset + len(costs), ext
         ))
-    else:
-        out_file = opts.o
 
-
-    assert opts.f or not os.path.isfile(
-        out_file), "File already exists! Try running with -f option to overwrite."
-
-
-    return costs, tours, durations
+    return results
 
 
 def _eval_dataset(model, dataset, width, softmax_temp, opts, device):
 
     model.to(device)
+    model.eval()
+
     model.set_decode_type(
         "greedy" if opts.decode_strategy in ('bs', 'greedy') else "sampling",
         temp=softmax_temp)
@@ -118,9 +119,9 @@ def _eval_dataset(model, dataset, width, softmax_temp, opts, device):
 
     results = []
     tasks_done_total = []
-    i = 0
     for batch in tqdm(dataloader, disable=opts.no_progress_bar):
         batch = move_to(batch, device)
+
         start = time.time()
         with torch.no_grad():
             if opts.decode_strategy in ('sample', 'greedy'):
@@ -163,61 +164,70 @@ def _eval_dataset(model, dataset, width, softmax_temp, opts, device):
                 batch_size
             )
         duration = time.time() - start
-
+        i = 0
         for seq, cost in zip(sequences, costs):
-            if  model.problem.NAME == "mrta":
+            if model.problem.NAME == "tsp":
                 seq = seq.tolist()  # No need to trim as all are same length
+            elif model.problem.NAME == "mrta":
+                seq = seq.tolist()  # No need to trim as all are same length
+            elif model.problem.NAME in ("cvrp"):
+                seq = np.trim_zeros(seq).tolist() + [0]  # Add depot
             else:
                 assert False, "Unkown problem: {}".format(model.problem.NAME)
             # Note VRP only
-            results.append((cost, tasks_done_total[i][0],duration,seq))
+            results.append({"cost":cost, "tasks_done": tasks_done_total[i][0],"total_duration":duration, "sequence":seq})
             i +=1
-
+    # plot tasks done here
+    # plt.plot(tasks_done_total)
+    # plt.show()
     return results
 
 
 if __name__ == "__main__":
-        n_tasks = 100
-        n_agents = int(n_tasks/5)
-        data_file = "data/mrta/"+str(n_tasks)+"_nodes_mrta.pkl"
 
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--datasets", nargs='+', default=[data_file], help="Filename of the dataset(s) to evaluate")
-        parser.add_argument("-f", action='store_true', help="Set true to overwrite")
-        parser.add_argument("-o", default=None, help="Name of the results file to write")
-        parser.add_argument('--val_size', type=int, default=100,
-                            help='Number of instances used for reporting validation performance')
-        parser.add_argument('--offset', type=int, default=0,
-                            help='Offset where to start in dataset (default 0)')
-        parser.add_argument('--eval_batch_size', type=int, default=100,
-                            help="Batch size to use during (baseline) evaluation")
-        parser.add_argument('--width', type=int, nargs='+',
-                            help='Sizes of beam to use for beam search (or number of samples for sampling), '
-                                 '0 to disable (default), -1 for infinite')
-        parser.add_argument('--decode_strategy', default="greedy", type=str,
-                            help='Beam search (bs), Sampling (sample) or Greedy (greedy)')
-        parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=1,
-                            help="Softmax temperature (sampling or bs)")
-        parser.add_argument('--model', default='outputs/mrta_100/run_20220506T114502', type=str) # set the path to the trained model which needs to be evaluated
-        parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
-        parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
-        parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')
-        parser.add_argument('--max_calc_batch_size', type=int, default=10000, help='Size for subbatches')
-        parser.add_argument('--results_dir', default='results', help="Name of results directory")
-        parser.add_argument('--multiprocessing', action='store_true',
-                            help='Use multiprocessing to parallelize over multiple GPUs')
-        parser.add_argument('--n_agents', type=int, default=n_agents,
-                            help='n_agents')
-        parser.add_argument('--n_tasks', type=int, default=n_tasks,
-                            help='n_tasks')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--datasets", nargs='+', default=["data/mrta/50_nodes_mrta.pkl"], help="Filename of the dataset(s) to evaluate")
+    parser.add_argument("-f", action='store_true', help="Set true to overwrite")
+    parser.add_argument("-o", default=None, help="Name of the results file to write")
+    parser.add_argument('--val_size', type=int, default=100,
+                        help='Number of instances used for reporting validation performance')
+    parser.add_argument('--offset', type=int, default=0,
+                        help='Offset where to start in dataset (default 0)')
+    parser.add_argument('--eval_batch_size', type=int, default=10,
+                        help="Batch size to use during (baseline) evaluation")
+    # parser.add_argument('--decode_type', type=str, default='greedy',
+    #                     help='Decode type, greedy or sampling')
+    parser.add_argument('--width', type=int, nargs='+',
+                        help='Sizes of beam to use for beam search (or number of samples for sampling), '
+                             '0 to disable (default), -1 for infinite')
+    parser.add_argument('--decode_strategy', default="greedy", type=str,
+                        help='Beam search (bs), Sampling (sample) or Greedy (greedy)')
+    parser.add_argument('--softmax_temperature', type=parse_softmax_temperature, default=1,
+                        help="Softmax temperature (sampling or bs)")
+    parser.add_argument('--model', default='outputs/mrta_100/run_20220506T194657', type=str)
+    parser.add_argument('--no_cuda', action='store_true', help='Disable CUDA')
+    parser.add_argument('--no_progress_bar', action='store_true', help='Disable progress bar')
+    parser.add_argument('--compress_mask', action='store_true', help='Compress mask into long')
+    parser.add_argument('--max_calc_batch_size', type=int, default=10000, help='Size for subbatches')
+    parser.add_argument('--results_dir', default='results', help="Name of results directory")
+    parser.add_argument('--multiprocessing', action='store_true',
+                        help='Use multiprocessing to parallelize over multiple GPUs')
 
-        opts = parser.parse_args()
+    opts = parser.parse_args()
 
-        assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \
-            "Cannot specify result filename with more than one dataset or more than one width"
+    assert opts.o is None or (len(opts.datasets) == 1 and len(opts.width) <= 1), \
+        "Cannot specify result filename with more than one dataset or more than one width"
 
-        widths = opts.width if opts.width is not None else [0]
+    widths = opts.width if opts.width is not None else [0]
+    all_files = "data/mrta_gini/gini_data_sets_n_100.pkl"
+    file_n = open(all_files, 'rb')
+    datasets = pickle.load(file_n)
+    tot = []
+    for width in widths:
+        for dataset_path in datasets:
+            results = eval_dataset(dataset_path, width, opts.softmax_temperature, opts)
+            tot.append(results[0]['tasks_done'])
 
-        for width in widths:
-            for dataset_path in opts.datasets:
-                eval_dataset(dataset_path, width, opts.softmax_temperature, opts)
+with open('CapAM.csv', 'w') as f:
+    write = csv.writer(f)
+    write.writerows((np.array(tot).T).reshape((96,1)).tolist())

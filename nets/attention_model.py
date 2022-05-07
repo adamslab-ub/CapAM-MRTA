@@ -79,9 +79,11 @@ class AttentionModel(nn.Module):
 
 
 
-        node_dim = 3  # x, y, demand
+        node_dim = 3
 
         if self.is_mrta:
+
+
             step_context_dim_new = embedding_dim + embedding_dim + 1
 
         # Special embedding projection for depot node
@@ -89,12 +91,7 @@ class AttentionModel(nn.Module):
 
         self.init_embed = nn.Linear(node_dim, embedding_dim)
 
-
-        self.embedder = GCAPCN(
-            n_dim=embedding_dim,
-            node_dim=3
-        )
-
+        self.embedder = GCAPCN()
 
         # For each node we compute (glimpse key, glimpse value, logit key) so 3 * embedding_dim
         self.project_node_embeddings = nn.Linear(embedding_dim, 3 * embedding_dim, bias=False)
@@ -118,8 +115,13 @@ class AttentionModel(nn.Module):
         :return:
         """
 
-
-        embeddings, _ = self.embedder(input)
+        if self.checkpoint_encoder and self.training:  # Only checkpoint if we need gradients
+            embeddings, _ = checkpoint(self.embedder, self._init_embed(input))
+        else:
+            import time
+            # start_time = time.time()
+            # embeddings, _ = self.embedder(self._init_embed(input))
+            embeddings, _ = self.embedder(input)
             # end_time = time.time() - start_time
 
         _log_p, pi, cost = self._inner(input, embeddings)
@@ -192,7 +194,7 @@ class AttentionModel(nn.Module):
 
         return torch.cat(
             (
-                self.init_embed_depot(input['depot'])[:, :],
+                self.init_embed_depot(input['depot'])[:, None, :],
                 self.init_embed(torch.cat((
                     input['loc'],
                     *(input[feat][:, :, None] for feat in features)
@@ -200,10 +202,10 @@ class AttentionModel(nn.Module):
             ),
             1
         )
-
+        # TSP
 
     def _inner_eval(self, input, embeddings):
-        # same as inner() but used for evaluaiton
+
         outputs = []
         sequences = []
 
@@ -216,7 +218,7 @@ class AttentionModel(nn.Module):
         # Perform decoding steps
         i = 0
 
-        total_time = 0.0
+        time_sl = []
         while not (self.shrink_size is None and not (state.all_finished().item() == 0)):
             start_time = time.time()
 
@@ -232,15 +234,14 @@ class AttentionModel(nn.Module):
                     state = state[unfinished]
                     fixed = fixed[unfinished]
 
-            # Only the required ones goes here, so we should
-            #  We need a variable that track which all tasks are available
             log_p, mask = self._get_log_p(fixed, state)
 
             # Select the indices of the next nodes in the sequences, result (batch_size) long
             selected = self._select_node(log_p.exp()[:, 0, :], mask[:, 0, :])  # Squeeze out steps dimension
-            time_1 = time.time() - start_time
+            end_time1 = time.time() - start_time
             state = state.update(selected)
-            start_time_2 = time.time() # we only consider time for computing a decision
+            start_time2 = time.time()
+
             # Now make log_p, selected desired output size by 'unshrinking'
             if self.shrink_size is not None and state.ids.size(0) < batch_size:
                 log_p_, selected_ = log_p, selected
@@ -253,19 +254,16 @@ class AttentionModel(nn.Module):
             # Collect output of step
             outputs.append(log_p[:, 0, :])
             sequences.append(selected)
-            # print(state.all_finished().item() == 0)
 
             i += 1
-            time_2 = time.time() - start_time_2
-            total_time += time_1 + time_2
+            end_time2 = time.time() - start_time2
+            time_sl.append(end_time1 + end_time2)
 
-        r = torch.div(((torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1), float(state.n_nodes))
-        d = torch.div(state.lengths, float(state.n_nodes) * 1.414).view(-1)
-        u = (r == 0).double()
-        cost = r - torch.mul(u, torch.exp(-d))
+
+        cost = (torch.div(state.tasks_finish_time, state.deadline) * (
+                    torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1)
+
         return torch.stack(outputs, 1), torch.stack(sequences, 1), cost, state.tasks_done_success.tolist()
-
-
 
     def _inner(self, input, embeddings):
 
@@ -278,11 +276,11 @@ class AttentionModel(nn.Module):
 
         batch_size = state.ids.size(0)
 
-
         # Perform decoding steps
         i = 0
 
-        #initial tasks
+
+        # initial tasks
         while not (self.shrink_size is None and not (state.all_finished().item() == 0)):
 
             if self.shrink_size is not None:
@@ -303,10 +301,8 @@ class AttentionModel(nn.Module):
 
             # Select the indices of the next nodes in the sequences, result (batch_size) long
             selected = self._select_node(log_p.exp()[:, 0, :], mask[:, 0, :])  # Squeeze out steps dimension
-            # print(selected[0].item(), state.robot_taking_decision[0])
 
             state = state.update(selected)
-
 
             # Now make log_p, selected desired output size by 'unshrinking'
             if self.shrink_size is not None and state.ids.size(0) < batch_size:
@@ -322,12 +318,10 @@ class AttentionModel(nn.Module):
             sequences.append(selected)
 
             i += 1
-        # Collected lists, return Tensor
-        r = torch.div(((torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1), float(state.n_nodes))
 
-        d = torch.div(state.lengths, float(state.n_nodes) * 1.414).view(-1)
-        u = (r == 0).double()
-        cost = r - torch.mul(u, torch.exp(-d))
+        cost = (torch.div(state.tasks_finish_time, state.deadline) * (
+                    torch.div(state.tasks_finish_time, state.deadline) > 1).to(torch.int64)).sum(-1)
+
         return torch.stack(outputs, 1), torch.stack(sequences, 1), cost
 
     def sample_many(self, input, batch_rep=1, iter_rep=1):
@@ -403,7 +397,8 @@ class AttentionModel(nn.Module):
 
         # Compute query = context node embedding
         query = fixed.context_node_projected + \
-                self.project_step_context(self._get_parallel_step_context(fixed.node_embeddings, state))
+                self.project_step_context(self._get_parallel_step_context(fixed.node_embeddings,
+                                                                          state))
 
         # Compute keys and values for the nodes
         glimpse_K, glimpse_V, logit_K = self._get_attention_node_data(fixed, state)
@@ -423,7 +418,7 @@ class AttentionModel(nn.Module):
     def _get_parallel_step_context(self, embeddings, state, from_depot=False):
         """
         Returns the context per step, optionally for multiple steps at once (for efficient evaluation of the model)
-        
+
         :param embeddings: (batch_size, graph_size, embed_dim)
         :param prev_a: (batch_size, num_steps)
         :param first_a: Only used when num_steps = 1, action of first step or None if first step
@@ -432,21 +427,25 @@ class AttentionModel(nn.Module):
 
         current_node = state.get_current_node()
         batch_size, num_steps = current_node.size()
-            # Embedding of previous node + remaining capacity
+        # Embedding of previous node + remaining capacity
 
         robots_current_destination = state.robots_current_destination.clone()
+
         working_robots = ((state.robots_initial_decision_sequence <= (state.n_agents - 1)).to(torch.float)).to(
             device=robots_current_destination.device)
 
-
-        current_robot_states = torch.cat((state.coords[state.ids,robots_current_destination], state.robots_range_remaining[:,:,None]),-1) * working_robots[:, :, None]
-        decision_robot_state = torch.cat((state.coords[state.ids, state.robots_current_destination[state.ids, state.robot_taking_decision]].view(batch_size,-1),state.robot_taking_decision_range),-1) # add depot info here??
-
+        current_robot_states = torch.cat(
+            (state.robots_current_destination_location, state.robots_work_capacity[:, :, None]), -1) * working_robots[:,
+                                                                                                       :, None]
+        decision_robot_state = torch.cat((state.robots_current_destination_location[
+                                              state.ids, state.robot_taking_decision].view(batch_size, -1),
+                                          state.robots_work_capacity[state.ids, state.robot_taking_decision]),
+                                         -1)  # add depot info here??
 
         robots_states_embedding = self.robots_state_query_embed(current_robot_states).sum(-2)
         decision_robot_state_embedding = self.robot_taking_decision_query(decision_robot_state)
-        return torch.cat((state.next_decision_time[:, :, None], decision_robot_state_embedding[:,None], robots_states_embedding[:,None]),-1)
-
+        return torch.cat((state.next_decision_time[:, :, None], decision_robot_state_embedding[:, None],
+                          robots_states_embedding[:, None]), -1)
 
     def _one_to_many_logits(self, query, glimpse_K, glimpse_V, logit_K, mask):
 
@@ -494,6 +493,6 @@ class AttentionModel(nn.Module):
 
         return (
             v.contiguous().view(v.size(0), v.size(1), v.size(2), self.n_heads, -1)
-            .expand(v.size(0), v.size(1) if num_steps is None else num_steps, v.size(2), self.n_heads, -1)
-            .permute(3, 0, 1, 2, 4)  # (n_heads, batch_size, num_steps, graph_size, head_dim)
+                .expand(v.size(0), v.size(1) if num_steps is None else num_steps, v.size(2), self.n_heads, -1)
+                .permute(3, 0, 1, 2, 4)  # (n_heads, batch_size, num_steps, graph_size, head_dim)
         )

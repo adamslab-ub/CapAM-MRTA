@@ -7,7 +7,6 @@ import torch
 def get_options(args=None):
     parser = argparse.ArgumentParser(
         description="Attention based model for solving the Travelling Salesman Problem with Reinforcement Learning")
-
     # Data
     parser.add_argument('--problem', default='mrta', help="The problem to solve, default 'tsp'")
     parser.add_argument('--graph_size', type=int, default=100, help="The size of the problem graph")
@@ -18,7 +17,7 @@ def get_options(args=None):
     parser.add_argument('--n_depot', type=int, default=1, help="Number of depot")
     parser.add_argument('--agent_max_range', type=int, default=4, help="Max range for the robot")
     parser.add_argument('--agent_max_capacity', type=int, default=10, help="Max capacity for the robot")
-    parser.add_argument('--agent_max_speed', type=int, default=.1, help="Max speed for the robot")
+    parser.add_argument('--agent_max_speed', type=int, default=.01, help="Max speed for the robot")
     parser.add_argument('--deadline_min', type=int, default=40,
                         help="Min value for deadline")
     parser.add_argument('--deadline_max', type=int, default=550,
@@ -91,8 +90,5 @@ def get_options(args=None):
         "{}_{}".format(opts.problem, opts.graph_size),
         opts.run_name
     )
-    if opts.bl_warmup_epochs is None:
-        opts.bl_warmup_epochs = 0 if opts.baseline == 'rollout' else 0
-    assert (opts.bl_warmup_epochs == 0) or (opts.baseline == 'rollout')
-    assert opts.epoch_size % opts.batch_size == 0, "Epoch size must be integer multiple of batch size!"
+
     return opts

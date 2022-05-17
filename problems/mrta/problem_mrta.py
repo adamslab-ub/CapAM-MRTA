@@ -72,7 +72,7 @@ def make_instance(data):
     n_agents = len(data['robot_data']['robots_capacity'])
     max_capacity = 10
     max_range = 4
-    max_speed = .1
+    max_speed = .01
     grid_size = 1
 
     return [{

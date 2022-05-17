@@ -57,11 +57,8 @@ class StateMRTA(NamedTuple):
     cur_coord: torch.Tensor
     i: torch.Tensor  # Keeps track of step
 
-    # VEHICLE_CAPACITY = 1.0  # Hardcoded
 
     n_agents : torch.Tensor
-    max_range :torch.Tensor
-    max_capacity : torch.Tensor
     max_speed : torch.Tensor
     n_nodes: torch.Tensor
     initial_size: torch.Tensor
@@ -105,8 +102,6 @@ class StateMRTA(NamedTuple):
         workload = input['workload']
         n_agents = input['n_agents'].reshape(-1)[:, None]
         max_n_agent = input['max_n_agents'][0, 0, 0].item()
-        max_range = input['max_range'][0].item()
-        max_capacity = input['max_capacity'][0].item()
         max_speed = input['max_speed'][0].item()
         initial_size = input['initial_size'][0].item()
         n_depot = input['depot'].size()[1]
@@ -152,9 +147,7 @@ class StateMRTA(NamedTuple):
             robots_start_location = robots_start_location,
             robots_current_destination_location = robots_start_location,
             depot = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
-            max_capacity = max_capacity,
             n_agents = n_agents,
-            max_range = max_range,
             n_nodes = input['loc'].size()[1],
             initial_size = initial_size,
             n_depot=n_depot,

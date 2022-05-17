@@ -71,7 +71,6 @@ def make_instance(data):
     initial_size = 100
     n_agents = len(data['robot_data']['robots_capacity'])
     max_capacity = 10
-    max_range = 4
     max_speed = .01
     grid_size = 1
 
@@ -83,7 +82,6 @@ def make_instance(data):
         'initial_size': initial_size,
         'n_agents': n_agents,
         'max_n_agents': torch.tensor([[n_agents]]),
-        'max_range': max_range,
         'max_capacity': max_capacity,
         'max_speed': max_speed,
         'robots_start_location': torch.tensor(data['robot_data']['robots_loc'], dtype=torch.float),
@@ -100,8 +98,6 @@ class MRTADataset(Dataset):
                  deadline_min=None,
                  deadline_max=None,
                  n_agents=20,
-                 max_range=4,
-                 max_capacity=10,
                  max_speed=.1,
                  distribution=None):
         super(MRTADataset, self).__init__()
@@ -170,8 +166,6 @@ class MRTADataset(Dataset):
                     'initial_size': 100,
                     'n_agents': torch.tensor([[n_agents]]),
                     'max_n_agents': torch.tensor([[max_n_agent]]),
-                    'max_range': max_range,
-                    'max_capacity': max_capacity,
                     'max_speed': max_speed,
                     'robots_start_location': robots_start_location,
                     'robots_work_capacity': robots_work_capacity

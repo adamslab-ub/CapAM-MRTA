@@ -15,8 +15,6 @@ def get_options(args=None):
     parser.add_argument('--epoch_size', type=int, default=100000, help="Number of instances per epoch during training")
     parser.add_argument('--n_agents', type=int, default=10, help="Number of robots")
     parser.add_argument('--n_depot', type=int, default=1, help="Number of depot")
-    parser.add_argument('--agent_max_range', type=int, default=4, help="Max range for the robot")
-    parser.add_argument('--agent_max_capacity', type=int, default=10, help="Max capacity for the robot")
     parser.add_argument('--agent_max_speed', type=int, default=.01, help="Max speed for the robot")
     parser.add_argument('--deadline_min', type=int, default=40,
                         help="Min value for deadline")

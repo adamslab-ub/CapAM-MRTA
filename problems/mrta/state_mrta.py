@@ -40,14 +40,9 @@ class StateMRTA(NamedTuple):
 
     # for performance tracking
     tasks_done_success: torch.Tensor # keeps track of all the task id which was done successfully
-    tasks_missed_deadline: torch.Tensor # keeps track of all the tasks which are visited but the deadline was missed
     tasks_visited: torch.Tensor # keeps track of all the tasks which are visited (successful or not)
     depot: torch.Tensor
 
-
-
-    #end
-    is_done: torch.Tensor
 
 
     # State
@@ -61,7 +56,6 @@ class StateMRTA(NamedTuple):
     n_agents : torch.Tensor
     max_speed : torch.Tensor
     n_nodes: torch.Tensor
-    initial_size: torch.Tensor
     n_depot: torch.Tensor
 
 
@@ -103,7 +97,6 @@ class StateMRTA(NamedTuple):
         n_agents = input['n_agents'].reshape(-1)[:, None]
         max_n_agent = input['max_n_agents'][0, 0, 0].item()
         max_speed = input['max_speed'][0].item()
-        initial_size = input['initial_size'][0].item()
         n_depot = input['depot'].size()[1]
         batch_size, n_loc, _ = loc.size()
         robots_initial_decision_sequence = torch.from_numpy(np.arange(0, max_n_agent)).expand((batch_size, max_n_agent)).to(device=loc.device)
@@ -133,9 +126,7 @@ class StateMRTA(NamedTuple):
             next_decision_time = torch.zeros((batch_size, 1), dtype=torch.float, device=loc.device),
             previous_decision_time = torch.zeros((batch_size, 1), dtype=torch.float, device=loc.device),
             tasks_done_success = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
-            tasks_missed_deadline = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
             tasks_visited = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
-            is_done = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
             distance_matrix = distance_matrix,
             time_matrix = time_matrix,
             deadline = deadline,
@@ -149,7 +140,6 @@ class StateMRTA(NamedTuple):
             depot = torch.zeros((batch_size, 1), dtype=torch.int64, device=loc.device),
             n_agents = n_agents,
             n_nodes = input['loc'].size()[1],
-            initial_size = initial_size,
             n_depot=n_depot,
             max_speed = max_speed,
         )

@@ -219,7 +219,7 @@ if __name__ == "__main__":
         "Cannot specify result filename with more than one dataset or more than one width"
 
     widths = opts.width if opts.width is not None else [0]
-    all_files = "data/mrta_gini/gini_data_sets_n_100.pkl"
+    all_files = "data/mrta_taptc/taptc_data_sets_n_100.pkl"
     file_n = open(all_files, 'rb')
     datasets = pickle.load(file_n)
     tot = []

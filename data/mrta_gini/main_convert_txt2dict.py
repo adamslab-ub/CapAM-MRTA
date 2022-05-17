@@ -20,7 +20,7 @@ ratio_deadline_list = [1, 2, 3, 4]
 robotSize_list = [2, 3, 5, 7]
 
 pkl_file_names = []
-all_files = "gini_data_sets_n_100.pkl"
+all_files = "taptc_data_sets_n_100.pkl"
 
 for G in group_list:
     for D in ratio_deadline_list:

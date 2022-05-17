@@ -82,8 +82,8 @@ def run(opts):
         assert opts.baseline is None, "Unknown baseline: {}".format(opts.baseline)
         baseline = NoBaseline()
 
-    if opts.bl_warmup_epochs > 0:
-        baseline = WarmupBaseline(baseline, opts.bl_warmup_epochs, warmup_exp_beta=opts.exp_beta)
+    # if opts.bl_warmup_epochs > 0:
+    #     baseline = WarmupBaseline(baseline, opts.bl_warmup_epochs, warmup_exp_beta=opts.exp_beta)
 
     # Load baseline from data, make sure script is called with same type of baseline
     if 'baseline' in load_data:

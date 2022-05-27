@@ -53,6 +53,6 @@ Citation:
     }
 
 
-If you have any questions or concerns, please raise an issue or email: stevepau@buffalo.
+If you have any questions or concerns, please raise an issue or email: stevepau@buffalo.edu
                 
                 

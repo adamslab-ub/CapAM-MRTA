@@ -35,22 +35,14 @@ S. Paul, P. Ghassemi and S. Chowdhury, "Learning Scalable Policies over Graphs f
     
     Bibtex: 
            @INPROCEEDINGS{9812370,
-           
-  author={Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
-  
-  booktitle={2022 International Conference on Robotics and Automation (ICRA)}, 
-  
-  title={Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks}, 
-  
-  year={2022},
-  
-  volume={},
-  
-  number={},
-  
-  pages={8815-8822},
-  
-  doi={10.1109/ICRA46639.2022.9812370}}
+           author={Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
+           booktitle={2022 International Conference on Robotics and Automation (ICRA)}, 
+           title={Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks}, 
+           year={2022},
+           volume={},
+           number={},
+           pages={8815-8822},
+           doi={10.1109/ICRA46639.2022.9812370}}
 
 
 If you have any questions or concerns, please raise an issue or email: stevepau@buffalo.edu

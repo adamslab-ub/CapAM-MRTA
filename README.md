@@ -30,7 +30,7 @@ Dependencies:
 Citation:
 
     Please cite our work if you find it useful.
-[S. Paul, P. Ghassemi, and S. Chowdhury, “Learning scalable policies over graphs for multi-robot task allocation using capsule attention networks,” 2022. [Online]. Available: https://arxiv.org/abs/2205.03321 22 / 22](https://arxiv.org/abs/2205.03321)
+S. Paul, P. Ghassemi and S. Chowdhury, "Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks," 2022 International Conference on Robotics and Automation (ICRA), 2022, pp. 8815-8822, doi: 10.1109/ICRA46639.2022.9812370.
 
     
     Bibtex: 

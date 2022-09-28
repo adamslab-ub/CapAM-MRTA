@@ -34,23 +34,15 @@ Citation:
 
     
     Bibtex: 
-            @misc{https://doi.org/10.48550/arxiv.2205.03321,
-      doi = {10.48550/ARXIV.2205.03321},
-      
-      url = {https://arxiv.org/abs/2205.03321},
-      
-      author = {Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
-      
-      keywords = {Multiagent Systems (cs.MA), Robotics (cs.RO), FOS: Computer and information sciences, FOS: Computer and information sciences},
-      
-      title = {Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks},
-      
-      publisher = {arXiv},
-      
-      year = {2022},
-      
-      copyright = {arXiv.org perpetual, non-exclusive license}
-    }
+           @INPROCEEDINGS{9812370,
+  author={Paul, Steve and Ghassemi, Payam and Chowdhury, Souma},
+  booktitle={2022 International Conference on Robotics and Automation (ICRA)}, 
+  title={Learning Scalable Policies over Graphs for Multi-Robot Task Allocation using Capsule Attention Networks}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={8815-8822},
+  doi={10.1109/ICRA46639.2022.9812370}}
 
 
 If you have any questions or concerns, please raise an issue or email: stevepau@buffalo.edu
